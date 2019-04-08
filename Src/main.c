@@ -288,12 +288,20 @@ int main(void) {
 
 
     // ####### POWEROFF BY POWER-BUTTON #######
+#ifdef POWER_BUTTON_IS_SWITCH
+    // Go to poweroff if power switch is off.
+    if (!HAL_GPIO_ReadPin(BUTTON_PORT, BUTTON_PIN) && weakr == 0 && weakl == 0) {
+      enable = 0;
+      poweroff();
+    }
+#else
+    // Go to poweroff when power button is pressed and then released.
     if (HAL_GPIO_ReadPin(BUTTON_PORT, BUTTON_PIN) && weakr == 0 && weakl == 0) {
       enable = 0;
       while (HAL_GPIO_ReadPin(BUTTON_PORT, BUTTON_PIN)) {}
       poweroff();
     }
-
+#endif
 
     // ####### BEEP AND EMERGENCY POWEROFF #######
     if ((TEMP_POWEROFF_ENABLE && board_temp_deg_c >= TEMP_POWEROFF && abs(speed) < 20) || (batteryVoltage < ((float)BAT_LOW_DEAD * (float)BAT_NUMBER_OF_CELLS) && abs(speed) < 20)) {  // poweroff before mainboard burns OR low bat 3
