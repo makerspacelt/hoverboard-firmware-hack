@@ -62,6 +62,8 @@ extern uint8_t buzzerFreq;    // global variable for the buzzer pitch. can be 1,
 extern uint8_t buzzerPattern; // global variable for the buzzer pattern. can be 1, 2, 3, 4, 5, 6, 7...
 
 extern uint8_t enable; // global variable for motor enable
+extern uint8_t enableR; // global variable for motor enable
+extern uint8_t enableL; // global variable for motor enable
 
 extern volatile uint32_t timeout; // global variable for timeout
 extern float batteryVoltage; // global variable for battery voltage
@@ -183,6 +185,8 @@ int main(void) {
   float board_temp_deg_c;
 
   enable = 1;  // enable motors
+  enableL = 1;
+  enableR = 1;
 
   while(1) {
     HAL_Delay(DELAY_IN_MAIN_LOOP); //delay in ms

@@ -22,6 +22,8 @@ uint32_t buzzerFreq = 0;
 uint32_t buzzerPattern = 0;
 
 uint8_t enable = 0;
+uint8_t enableR = 0;
+uint8_t enableL = 0;
 
 const int pwm_res = 64000000 / 2 / PWM_FREQ; // = 2000
 
@@ -165,8 +167,8 @@ void DMA1_Channel1_IRQHandler() {
     batteryVoltage = batteryVoltage * 0.99 + ((float)adc_buffer.batt1 * ((float)BAT_CALIB_REAL_VOLTAGE / (float)BAT_CALIB_ADC)) * 0.01;
   }
 
-  //disable PWM when current limit is reached (current chopping)
-  if(ABS((adc_buffer.dcl - offsetdcl) * MOTOR_AMP_CONV_DC_AMP) > DC_CUR_LIMIT || timeout > TIMEOUT || enable == 0) {
+  //disable PWM when current limit is reached (current chopping) or motor is disabled
+  if(ABS((adc_buffer.dcl - offsetdcl) * MOTOR_AMP_CONV_DC_AMP) > DC_CUR_LIMIT || timeout > TIMEOUT || enable == 0 || enableL == 0) {
     LEFT_TIM->BDTR &= ~TIM_BDTR_MOE;
     //HAL_GPIO_WritePin(LED_PORT, LED_PIN, 1);
   } else {
@@ -174,7 +176,7 @@ void DMA1_Channel1_IRQHandler() {
     //HAL_GPIO_WritePin(LED_PORT, LED_PIN, 0);
   }
 
-  if(ABS((adc_buffer.dcr - offsetdcr) * MOTOR_AMP_CONV_DC_AMP)  > DC_CUR_LIMIT || timeout > TIMEOUT || enable == 0) {
+  if(ABS((adc_buffer.dcr - offsetdcr) * MOTOR_AMP_CONV_DC_AMP)  > DC_CUR_LIMIT || timeout > TIMEOUT || enable == 0 || enableR == 0) {
     RIGHT_TIM->BDTR &= ~TIM_BDTR_MOE;
   } else {
     RIGHT_TIM->BDTR |= TIM_BDTR_MOE;

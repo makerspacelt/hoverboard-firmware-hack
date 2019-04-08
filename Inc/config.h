@@ -93,6 +93,12 @@
 #define INVERT_L_DIRECTION
 #define BEEPS_BACKWARD 1    // 0 or 1
 
+//Use right board button PB11 to enable/disable right motor:
+//(uncomment CONTROL_RIGHT_BOARD_BUTTONS above)
+//#define ADDITIONAL_CODE \
+if (rbutton2) { enableR = 1; } \
+else { enableR = 0; }
+
 //Turbo boost at high speeds while button1 is pressed:
 //#define ADDITIONAL_CODE \
 if (button1 && speedR > 700) { /* field weakening at high speeds */ \
