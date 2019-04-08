@@ -48,7 +48,7 @@ typedef struct{
 
 volatile Serialcommand command;
 
-uint8_t button1, button2;
+uint8_t button1, button2, rbutton1, rbutton2;
 
 int steer; // global variable for steering. -1000 to 1000
 int speed; // global variable for speed. -1000 to 1000
@@ -120,6 +120,10 @@ int main(void) {
 
   #if defined(DEBUG_SERIAL_USART2) || defined(DEBUG_SERIAL_USART3)
     UART_Init();
+  #endif
+
+  #if defined(CONTROL_RIGHT_BOARD_BUTTONS)
+    RBOARD_BTNS_Init();
   #endif
 
   HAL_GPIO_WritePin(OFF_PORT, OFF_PIN, 1);
@@ -218,6 +222,9 @@ int main(void) {
       timeout = 0;
     #endif
 
+    // Use right sensor board inputs as buttons.
+    rbutton1 = HAL_GPIO_ReadPin(RBUTTON1_PORT, RBUTTON1_PIN);
+    rbutton2 = HAL_GPIO_ReadPin(RBUTTON2_PORT, RBUTTON2_PIN);
 
     // ####### LOW-PASS FILTER #######
     steer = steer * (1.0 - FILTER) + cmd1 * FILTER;

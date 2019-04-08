@@ -188,6 +188,23 @@ void UART_Init() {
 }
 #endif
 
+#ifdef CONTROL_RIGHT_BOARD_BUTTONS
+void RBOARD_BTNS_Init() {
+  GPIO_InitTypeDef GPIO_InitStruct;
+  GPIO_InitStruct.Pin   = RBUTTON1_PIN;
+  GPIO_InitStruct.Mode  = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull  = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(RBUTTON1_PORT, &GPIO_InitStruct);
+ 
+  GPIO_InitStruct.Pin   = RBUTTON2_PIN;
+  GPIO_InitStruct.Mode  = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull  = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(RBUTTON2_PORT, &GPIO_InitStruct);
+}
+#endif
+
 /*
 void UART_Init() {
   __HAL_RCC_USART2_CLK_ENABLE();

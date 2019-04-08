@@ -28,3 +28,5 @@ void MX_TIM_Init(void);
 void MX_ADC1_Init(void);
 void MX_ADC2_Init(void);
 void UART_Init(void);
+void RBOARD_BTNS_Init(void);
+
