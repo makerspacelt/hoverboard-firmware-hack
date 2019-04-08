@@ -69,6 +69,7 @@
 #define ADC1_MAX 4095               // max ADC1-value while poti at maximum-position (0 - 4095)
 #define ADC2_MIN 0                // min ADC2-value while poti at minimum-position (0 - 4095)
 #define ADC2_MAX 4095               // max ADC2-value while poti at maximum-position (0 - 4095)
+//#define CONTROL_ADC_SINGLE          // use a single ADC to control both motors: ADC1 will be used for motor control, while ADC2 can as a button (button2 will be set to 1 when ADC2 goes above half its range)
 
 // ###### CONTROL VIA NINTENDO NUNCHUCK ######
 // left sensor board cable. keep cable short, use shielded cable, use ferrits, stabalize voltage in nunchuck, use the right one of the 2 types of nunchucks, add i2c pullups. use original nunchuck. most clones does not work very well.
