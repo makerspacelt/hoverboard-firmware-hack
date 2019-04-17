@@ -223,6 +223,14 @@ int main(void) {
       timeout = 0;
     #endif
 
+    #ifdef CONTROL_ADC_DARIUS
+      // ADC values range: 0-4095, see ADC-calibration in config.h
+      cmd1 = CLAMP(((adc_buffer.l_tx2 - ADC1_MID) * 1000) / ((ADC1_MAX - ADC1_MIN) / 2), -1000, 1000);
+      cmd2 = CLAMP(((adc_buffer.l_rx2 - ADC2_MID) * 1000) / ((ADC2_MAX - ADC2_MIN) / 2), -1000, 1000);
+      if (abs(cmd1) < 50) cmd1 = 0;
+      if (abs(cmd2) < 50) cmd2 = 0;
+    #endif
+
     #ifdef CONTROL_SERIAL_USART2
       cmd1 = CLAMP((int16_t)command.steer, -1000, 1000);
       cmd2 = CLAMP((int16_t)command.speed, -1000, 1000);
@@ -235,13 +243,18 @@ int main(void) {
     rbutton2 = HAL_GPIO_ReadPin(RBUTTON2_PORT, RBUTTON2_PIN);
 
     // ####### LOW-PASS FILTER #######
-    steer = steer * (1.0 - FILTER) + cmd1 * FILTER;
-    speed = speed * (1.0 - FILTER) + cmd2 * FILTER;
+    /* steer = steer * (1.0 - FILTER) + cmd1 * FILTER; */
+    /* speed = speed * (1.0 - FILTER) + cmd2 * FILTER; */
 
 
     // ####### MIXER #######
-    speedR = CLAMP(speed * SPEED_COEFFICIENT -  steer * STEER_COEFFICIENT, -1000, 1000);
-    speedL = CLAMP(speed * SPEED_COEFFICIENT +  steer * STEER_COEFFICIENT, -1000, 1000);
+    /* speedR = CLAMP(speed * SPEED_COEFFICIENT -  steer * STEER_COEFFICIENT, -1000, 1000); */
+    /* speedL = CLAMP(speed * SPEED_COEFFICIENT +  steer * STEER_COEFFICIENT, -1000, 1000); */
+    /* speedR = CLAMP(speed * SPEED_COEFFICIENT -  steer * STEER_COEFFICIENT, -1000, 1000); */
+    /* speedL = CLAMP(speedL * (1.0 - FILTER) + cmd2 * FILTER) */
+        /* speed * SPEED_COEFFICIENT +  steer * STEER_COEFFICIENT, -1000, 1000); */
+    speedR = CLAMP(speedR * (1.0 - FILTER) + cmd1 * FILTER, -1000, 1000);
+    speedL = CLAMP(speedL * (1.0 - FILTER) + cmd2 * FILTER, -1000, 1000);
 
 
     #ifdef ADDITIONAL_CODE
@@ -273,16 +286,20 @@ int main(void) {
       board_temp_deg_c = ((float)TEMP_CAL_HIGH_DEG_C - (float)TEMP_CAL_LOW_DEG_C) / ((float)TEMP_CAL_HIGH_ADC - (float)TEMP_CAL_LOW_ADC) * (board_temp_adc_filtered - (float)TEMP_CAL_LOW_ADC) + (float)TEMP_CAL_LOW_DEG_C;
       
       // ####### DEBUG SERIAL OUT #######
-      #ifdef CONTROL_ADC
-        setScopeChannel(0, (int)adc_buffer.l_tx2);  // 1: ADC1
-        setScopeChannel(1, (int)adc_buffer.l_rx2);  // 2: ADC2
-      #endif
+      setScopeChannel(0, (int)adc_buffer.l_tx2);  // 1: ADC1
+      setScopeChannel(1, cmd1);
       setScopeChannel(2, (int)speedR);  // 3: output speed: 0-1000
-      setScopeChannel(3, (int)speedL);  // 4: output speed: 0-1000
-      setScopeChannel(4, (int)adc_buffer.batt1);  // 5: for battery voltage calibration
-      setScopeChannel(5, (int)(batteryVoltage * 100.0f));  // 6: for verifying battery voltage calibration
-      setScopeChannel(6, (int)board_temp_adc_filtered);  // 7: for board temperature calibration
-      setScopeChannel(7, (int)board_temp_deg_c);  // 8: for verifying board temperature calibration
+
+      /* setScopeChannel(0, (int)adc_buffer.l_tx2);  // 1: ADC1 */
+      /* setScopeChannel(1, (int)adc_buffer.l_rx2);  // 2: ADC2 */
+      /* setScopeChannel(2, (int)speedR);  // 3: output speed: 0-1000 */
+      /* setScopeChannel(3, (int)speedL);  // 4: output speed: 0-1000 */
+      /* /1* setScopeChannel(4, (int)adc_buffer.batt1);  // 5: for battery voltage calibration *1/ */
+      /* /1* setScopeChannel(5, (int)(batteryVoltage * 100.0f));  // 6: for verifying battery voltage calibration *1/ */
+      /* setScopeChannel(4, cmd1); */
+      /* setScopeChannel(5, cmd2); */
+      /* setScopeChannel(6, (int)board_temp_adc_filtered);  // 7: for board temperature calibration */
+      /* setScopeChannel(7, (int)board_temp_deg_c);  // 8: for verifying board temperature calibration */
       consoleScope();
     }
 
@@ -304,7 +321,7 @@ int main(void) {
 #endif
 
     // ####### BEEP AND EMERGENCY POWEROFF #######
-    if ((TEMP_POWEROFF_ENABLE && board_temp_deg_c >= TEMP_POWEROFF && abs(speed) < 20) || (batteryVoltage < ((float)BAT_LOW_DEAD * (float)BAT_NUMBER_OF_CELLS) && abs(speed) < 20)) {  // poweroff before mainboard burns OR low bat 3
+    if ((TEMP_POWEROFF_ENABLE && board_temp_deg_c >= TEMP_POWEROFF && abs(speed) < 20) || (BAT_LOW_DEAD && batteryVoltage < ((float)BAT_LOW_DEAD * (float)BAT_NUMBER_OF_CELLS) && abs(speed) < 20)) {  // poweroff before mainboard burns OR low bat 3
       poweroff();
     } else if (TEMP_WARNING_ENABLE && board_temp_deg_c >= TEMP_WARNING) {  // beep if mainboard gets hot
       buzzerFreq = 4;
