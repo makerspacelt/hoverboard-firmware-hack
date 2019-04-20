@@ -145,42 +145,6 @@ int main(void) {
   int speedL = 0, speedR = 0;
   float direction = 1;
 
-  #ifdef CONTROL_PPM
-    PPM_Init();
-  #endif
-
-  #ifdef CONTROL_NUNCHUCK
-    I2C_Init();
-    Nunchuck_Init();
-  #endif
-
-  #ifdef CONTROL_SERIAL_USART2
-    UART_Control_Init();
-    HAL_UART_Receive_DMA(&huart2, (uint8_t *)&command, 4);
-  #endif
-
-  #ifdef DEBUG_I2C_LCD
-    I2C_Init();
-    HAL_Delay(50);
-    lcd.pcf8574.PCF_I2C_ADDRESS = 0x27;
-      lcd.pcf8574.PCF_I2C_TIMEOUT = 5;
-      lcd.pcf8574.i2c = hi2c2;
-      lcd.NUMBER_OF_LINES = NUMBER_OF_LINES_2;
-      lcd.type = TYPE0;
-
-      if(LCD_Init(&lcd)!=LCD_OK){
-          // error occured
-          //TODO while(1);
-      }
-
-    LCD_ClearDisplay(&lcd);
-    HAL_Delay(5);
-    LCD_SetLocation(&lcd, 0, 0);
-    LCD_WriteString(&lcd, "Hover V2.0");
-    LCD_SetLocation(&lcd, 0, 1);
-    LCD_WriteString(&lcd, "Initializing...");
-  #endif
-
   float board_temp_adc_filtered = (float)adc_buffer.temp;
   float board_temp_deg_c;
 
@@ -191,94 +155,34 @@ int main(void) {
   while(1) {
     HAL_Delay(DELAY_IN_MAIN_LOOP); //delay in ms
 
-    #ifdef CONTROL_NUNCHUCK
-      Nunchuck_Read();
-      cmd1 = CLAMP((nunchuck_data[0] - 127) * 8, -1000, 1000); // x - axis. Nunchuck joystick readings range 30 - 230
-      cmd2 = CLAMP((nunchuck_data[1] - 128) * 8, -1000, 1000); // y - axis
-
-      button1 = (uint8_t)nunchuck_data[5] & 1;
-      button2 = (uint8_t)(nunchuck_data[5] >> 1) & 1;
-    #endif
-
-    #ifdef CONTROL_PPM
-      cmd1 = CLAMP((ppm_captured_value[0] - 500) * 2, -1000, 1000);
-      cmd2 = CLAMP((ppm_captured_value[1] - 500) * 2, -1000, 1000);
-      button1 = ppm_captured_value[5] > 500;
-      float scale = ppm_captured_value[2] / 1000.0f;
-    #endif
-
-    #ifdef CONTROL_ADC
-      // ADC values range: 0-4095, see ADC-calibration in config.h
-      cmd1 = CLAMP(adc_buffer.l_tx2 - ADC1_MIN, 0, ADC1_MAX) / (ADC1_MAX / 1000.0f);  // ADC1
-      #ifndef CONTROL_ADC_SINGLE
-        cmd2 = CLAMP(adc_buffer.l_rx2 - ADC2_MIN, 0, ADC2_MAX) / (ADC2_MAX / 1000.0f);  // ADC2
-      #else
-        cmd2 = cmd1;
-      #endif
-
-      // use ADCs as button inputs:
-      button1 = (uint8_t)(adc_buffer.l_tx2 > (ADC1_MIN + ADC1_MIN) / 2);  // ADC1
-      button2 = (uint8_t)(adc_buffer.l_rx2 > (ADC2_MIN + ADC2_MAX) / 2);  // ADC2
-
-      timeout = 0;
-    #endif
-
-    #ifdef CONTROL_ADC_DARIUS
+    if (adc_buffer.l_tx2 < ADC1_MIN || adc_buffer.l_rx2 < ADC2_MIN || adc_buffer.l_tx2 > ADC1_MAX || adc_buffer.l_rx2 > ADC2_MAX) {
+      cmd1 = 0;
+      cmd2 = 0;
+    }
+    else {
       // ADC values range: 0-4095, see ADC-calibration in config.h
       cmd1 = CLAMP(((adc_buffer.l_tx2 - ADC1_MID) * 1000) / ((ADC1_MAX - ADC1_MIN) / 2), -1000, 1000);
       cmd2 = CLAMP(((adc_buffer.l_rx2 - ADC2_MID) * 1000) / ((ADC2_MAX - ADC2_MIN) / 2), -1000, 1000);
       if (abs(cmd1) < 50) cmd1 = 0;
       if (abs(cmd2) < 50) cmd2 = 0;
-    #endif
+    }
 
-    #ifdef CONTROL_SERIAL_USART2
-      cmd1 = CLAMP((int16_t)command.steer, -1000, 1000);
-      cmd2 = CLAMP((int16_t)command.speed, -1000, 1000);
-
-      timeout = 0;
-    #endif
+    timeout = 0;
 
     // Use right sensor board inputs as buttons.
     rbutton1 = HAL_GPIO_ReadPin(RBUTTON1_PORT, RBUTTON1_PIN);
     rbutton2 = HAL_GPIO_ReadPin(RBUTTON2_PORT, RBUTTON2_PIN);
 
-    // ####### LOW-PASS FILTER #######
-    /* steer = steer * (1.0 - FILTER) + cmd1 * FILTER; */
-    /* speed = speed * (1.0 - FILTER) + cmd2 * FILTER; */
-
-
-    // ####### MIXER #######
-    /* speedR = CLAMP(speed * SPEED_COEFFICIENT -  steer * STEER_COEFFICIENT, -1000, 1000); */
-    /* speedL = CLAMP(speed * SPEED_COEFFICIENT +  steer * STEER_COEFFICIENT, -1000, 1000); */
-    /* speedR = CLAMP(speed * SPEED_COEFFICIENT -  steer * STEER_COEFFICIENT, -1000, 1000); */
-    /* speedL = CLAMP(speedL * (1.0 - FILTER) + cmd2 * FILTER) */
-        /* speed * SPEED_COEFFICIENT +  steer * STEER_COEFFICIENT, -1000, 1000); */
     speedR = CLAMP(speedR * (1.0 - FILTER) + cmd1 * FILTER, -1000, 1000);
     speedL = CLAMP(speedL * (1.0 - FILTER) + cmd2 * FILTER, -1000, 1000);
 
-
-    #ifdef ADDITIONAL_CODE
-      ADDITIONAL_CODE;
-    #endif
-
-
     // ####### SET OUTPUTS #######
     if ((speedL < lastSpeedL + 50 && speedL > lastSpeedL - 50) && (speedR < lastSpeedR + 50 && speedR > lastSpeedR - 50) && timeout < TIMEOUT) {
-    #ifdef INVERT_R_DIRECTION
       pwmr = speedR;
-    #else
-      pwmr = -speedR;
-    #endif
-    #ifdef INVERT_L_DIRECTION
-      pwml = -speedL;
-    #else
       pwml = speedL;
-    #endif
     }
-
     lastSpeedL = speedL;
     lastSpeedR = speedR;
-
 
     if (inactivity_timeout_counter % 25 == 0) {
       // ####### CALC BOARD TEMPERATURE #######
@@ -286,9 +190,13 @@ int main(void) {
       board_temp_deg_c = ((float)TEMP_CAL_HIGH_DEG_C - (float)TEMP_CAL_LOW_DEG_C) / ((float)TEMP_CAL_HIGH_ADC - (float)TEMP_CAL_LOW_ADC) * (board_temp_adc_filtered - (float)TEMP_CAL_LOW_ADC) + (float)TEMP_CAL_LOW_DEG_C;
       
       // ####### DEBUG SERIAL OUT #######
-      setScopeChannel(0, (int)adc_buffer.l_tx2);  // 1: ADC1
-      setScopeChannel(1, cmd1);
-      setScopeChannel(2, (int)speedR);  // 3: output speed: 0-1000
+      setScopeChannel(0, (int)adc_buffer.l_tx2);
+      setScopeChannel(1, pwmr);
+      setScopeChannel(2, (int)adc_buffer.l_rx2);
+      setScopeChannel(3, pwml);
+      /* setScopeChannel(3, (int)adc_buffer.l_rx2);  // 1: ADC2 */
+      /* setScopeChannel(4, cmd2); */
+      /* setScopeChannel(5, (int)pwml);  // 3: output speed: 0-1000 */
 
       /* setScopeChannel(0, (int)adc_buffer.l_tx2);  // 1: ADC1 */
       /* setScopeChannel(1, (int)adc_buffer.l_rx2);  // 2: ADC2 */
